@@ -1,1 +1,2 @@
-GameTrack SOlitario
+GameTrack Solitario
+
