@@ -1,5 +1,6 @@
 package com.example.gametrack.screens
 
+import android.Manifest
 import android.content.Context
 import android.net.Uri
 import android.widget.Toast
@@ -9,6 +10,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -23,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.gametrack.GameViewModel
@@ -32,9 +35,13 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+
+// HOLDER PARA PERSISTIR LA IMAGEN
+object ProfileImageHolder {
+    var savedImageUri: Uri? = null
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,67 +52,82 @@ fun ProfileScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    // 🆕 OBTENER DATOS DEL VIEWMODEL
+    val username = viewModel.getCurrentUsername()
+    val email = viewModel.getCurrentEmail()
+
+    // Estados para imagen de perfil - CARGA DESDE HOLDER
+    var profileImageUri by remember {
+        mutableStateOf(ProfileImageHolder.savedImageUri)
+    }
+    var showImageSourceDialog by remember { mutableStateOf(false) }
+    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+
     // FORZAR carga de datos del usuario y juegos
     LaunchedEffect(Unit) {
         viewModel.loadGamesForCurrentUser()
     }
 
-    val currentUser by viewModel.currentUser.collectAsState()
     val games by viewModel.games.collectAsState()
 
-    val (username, email) = when (currentUser) {
-        is GameViewModel.UserState.LoggedInLocal -> {
-            val user = currentUser as GameViewModel.UserState.LoggedInLocal
-            Pair(user.username, user.email)
-        }
-        else -> Pair("Invitado", "No disponible")
+    // ========== FUNCIÓN CLAVE QUE SÍ FUNCIONA ==========
+    fun createImageFileUri(context: Context): Uri {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir = context.cacheDir
+        val file = File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
+        val authority = "${context.packageName}.provider"
+        return FileProvider.getUriForFile(context, authority, file)
     }
 
-    var profileImageUri by remember { mutableStateOf<Uri?>(null) }
-    var showImageSourceDialog by remember { mutableStateOf(false) }
-    var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
+    // ========== LAUNCHERS ==========
 
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success && cameraImageUri != null) {
-            profileImageUri = cameraImageUri
-            Toast.makeText(context, "Foto actualizada", Toast.LENGTH_SHORT).show()
-        }
-    }
-
+    // 1. Launcher para GALERÍA
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
             profileImageUri = it
-            Toast.makeText(context, "Imagen actualizada", Toast.LENGTH_SHORT).show()
+            ProfileImageHolder.savedImageUri = it
+            Toast.makeText(context, "✅ Imagen actualizada desde galería", Toast.LENGTH_SHORT).show()
         }
     }
 
-    fun createImageFile(context: Context): File {
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val storageDir = context.externalCacheDir ?: context.cacheDir
-        return File.createTempFile(
-            "JPEG_${timeStamp}_",
-            ".jpg",
-            storageDir
-        )
+    // 2. Launcher para CÁMARA
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && tempCameraUri != null) {
+            profileImageUri = tempCameraUri
+            ProfileImageHolder.savedImageUri = tempCameraUri
+            Toast.makeText(context, "✅ Foto tomada exitosamente", Toast.LENGTH_SHORT).show()
+        }
     }
+
+    // 3. Launcher para PERMISO DE CÁMARA
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            try {
+                val uri = createImageFileUri(context)
+                tempCameraUri = uri
+                cameraLauncher.launch(uri)
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    "❌ Error: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        } else {
+            Toast.makeText(context, "❌ Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // ========== FUNCIONES SIMPLES ==========
 
     fun openCamera() {
-        try {
-            val file = createImageFile(context)
-            val uri = androidx.core.content.FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.provider",
-                file
-            )
-            cameraImageUri = uri
-            cameraLauncher.launch(uri)
-        } catch (e: Exception) {
-            Toast.makeText(context, "Error al abrir cámara", Toast.LENGTH_SHORT).show()
-        }
+        permissionLauncher.launch(Manifest.permission.CAMERA)
     }
 
     fun openGallery() {
@@ -134,6 +156,7 @@ fun ProfileScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // TARJETA DE PERFIL
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -179,6 +202,7 @@ fun ProfileScreen(
                         }
                     }
 
+                    // DIÁLOGO PARA ELEGIR FUENTE
                     if (showImageSourceDialog) {
                         AlertDialog(
                             onDismissRequest = { showImageSourceDialog = false },
@@ -225,10 +249,33 @@ fun ProfileScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = email,
+                            text = if (email.isNotEmpty()) email else "No disponible",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // BOTÓN PARA GUARDAR IMAGEN
+                        if (profileImageUri != null) {
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        Toast.makeText(
+                                            context,
+                                            "💾 Imagen guardada en perfil",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
+                                modifier = Modifier.padding(top = 8.dp)
+                            ) {
+                                Icon(Icons.Default.Save, contentDescription = "Guardar")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Guardar como foto de perfil")
+                            }
+                        }
 
                         Spacer(modifier = Modifier.height(16.dp))
 
@@ -254,6 +301,7 @@ fun ProfileScreen(
                 }
             }
 
+            // TARJETA DE ESTADÍSTICAS
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -331,10 +379,12 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // BOTÓN CERRAR SESIÓN
             Button(
                 onClick = {
                     viewModel.logout()
-                    Toast.makeText(context, "Sesión cerrada", Toast.LENGTH_SHORT).show()
+                    ProfileImageHolder.savedImageUri = null
+                    Toast.makeText(context, "👋 Sesión cerrada", Toast.LENGTH_SHORT).show()
                     navController.navigate("login") {
                         popUpTo("home") { inclusive = true }
                     }

@@ -36,6 +36,10 @@ class GameViewModelFactory(
 
             // 5. CREAR ViewModel
             val viewModel = GameViewModel(gameRepository, userRepository)
+
+            // 🆕 PASAR EL CONTEXTO AL VIEWMODEL
+            viewModel.setContext(context)
+
             Log.d("ViewModelFactory", "✅ GameViewModel creado exitosamente")
 
             return viewModel as T

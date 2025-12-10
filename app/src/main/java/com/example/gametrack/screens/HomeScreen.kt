@@ -24,11 +24,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
+import com.example.gametrack.BuildConfig
 import com.example.gametrack.GameViewModel
 import com.example.gametrack.R
 import com.example.gametrack.data.Game
 import com.example.gametrack.ui.theme.NeonGreen
 import kotlinx.coroutines.launch
+import androidx.compose.ui.window.Dialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +47,21 @@ fun HomeScreen(
 
     // Cargar juegos cuando se monte la pantalla
     LaunchedEffect(Unit) {
+        android.util.Log.d("HomeScreen", "🏠 HomeScreen montada")
+        android.util.Log.d("HomeScreen", "🆔 UserId actual: ${viewModel.getCurrentUserId()}")
+        android.util.Log.d("HomeScreen", "👤 Usuario actual: $currentUsername")
+
         viewModel.loadGamesForCurrentUser()
+    }
+
+    // También recargar cuando la pantalla gane foco
+    LaunchedEffect(navController) {
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            if (destination.route == "home") {
+                android.util.Log.d("HomeScreen", "🔄 Recargando juegos al volver a Home")
+                viewModel.loadGamesForCurrentUser()
+            }
+        }
     }
 
     Scaffold(
@@ -60,6 +77,17 @@ fun HomeScreen(
                 actions = {
                     IconButton(onClick = { navController.navigate("profile") }) {
                         Icon(Icons.Default.Person, contentDescription = "Perfil")
+                    }
+
+                    // BOTÓN DEBUG
+                    if (BuildConfig.DEBUG) {
+                        IconButton(onClick = {
+                            val debugInfo = viewModel.debugInfo()
+                            Toast.makeText(context, debugInfo, Toast.LENGTH_LONG).show()
+                            android.util.Log.d("HomeScreen", debugInfo)
+                        }) {
+                            Icon(Icons.Default.Info, contentDescription = "Debug Info")
+                        }
                     }
                 }
             )
@@ -189,6 +217,22 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Añadir Juego")
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // BOTÓN PARA FORZAR RECARGA
+                    Button(
+                        onClick = {
+                            viewModel.loadGamesForCurrentUser()
+                            Toast.makeText(context, "🔄 Recargando juegos...", Toast.LENGTH_SHORT).show()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Blue),
+                        modifier = Modifier.width(200.dp)
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Recargar")
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Recargar Lista")
+                    }
                 }
             } else {
                 LazyColumn(
@@ -198,14 +242,16 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(games) { game ->
-                        GameCardSimple(
+                        GameCardListStyle(
                             game = game,
                             onClick = {
+                                // FUTURO: Navegar a pantalla de detalles/edición
                                 Toast.makeText(context, "Seleccionado: ${game.title}", Toast.LENGTH_SHORT).show()
                             },
                             onDelete = {
+                                // ELIMINAR JUEGO CON CONFIRMACIÓN
                                 viewModel.deleteGame(game)
-                                Toast.makeText(context, "${game.title} eliminado", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "✅ \"${game.title}\" eliminado", Toast.LENGTH_SHORT).show()
                             }
                         )
                     }
@@ -220,7 +266,17 @@ fun HomeScreen(
                         .background(Color.Black.copy(alpha = 0.5f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = NeonGreen)
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator(color = NeonGreen)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "Cargando juegos...",
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             }
         }
@@ -228,11 +284,14 @@ fun HomeScreen(
 }
 
 @Composable
-fun GameCardSimple(
+fun GameCardListStyle(
     game: Game,
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showImageFullscreen by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -240,68 +299,166 @@ fun GameCardSimple(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Fila superior: Título y plataforma
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // 🖼️ IMAGEN A LA IZQUIERDA
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable {
+                        if (game.imagenUrl != null) {
+                            showImageFullscreen = true
+                        }
+                    }
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = game.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
+                if (game.imagenUrl != null) {
+                    Image(
+                        painter = rememberAsyncImagePainter(
+                            model = game.imagenUrl,
+                            error = painterResource(id = R.drawable.ic_empty_games)
+                        ),
+                        contentDescription = "Imagen de ${game.title}",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
 
-                // Badge de plataforma
-                Surface(
-                    color = NeonGreen.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = game.platform,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = NeonGreen,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    // Indicador de que se puede hacer tap
+                    if (game.imagenUrl != null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.2f))
+                        )
+                    }
+                } else {
+                    // Mostrar ícono si no hay imagen
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_empty_games),
+                        contentDescription = "Sin imagen",
+                        modifier = Modifier.size(32.dp),
+                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
-            // Fila media: Estado y calificación
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+            // 📄 INFORMACIÓN A LA DERECHA
+            Column(
+                modifier = Modifier.weight(1f)
             ) {
-                // Badge de estado
-                Surface(
-                    color = when (game.status.lowercase()) {
-                        "completado" -> Color.Green.copy(alpha = 0.2f)
-                        "jugando" -> Color.Blue.copy(alpha = 0.2f)
-                        "por jugar" -> Color.Gray.copy(alpha = 0.2f)
-                        "abandonado" -> Color.Red.copy(alpha = 0.2f)
-                        else -> Color.Gray.copy(alpha = 0.2f)
-                    },
-                    shape = RoundedCornerShape(6.dp)
+                // Fila: Título y botón eliminar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = game.status,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        text = game.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
+
+                    IconButton(
+                        onClick = { showDeleteDialog = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Eliminar juego",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-                // Calificación con estrellas
+                // Fila: Plataforma y Estado
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Badge de plataforma
+                    Surface(
+                        color = NeonGreen.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = game.platform,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = NeonGreen,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+
+                    // Badge de estado
+                    Surface(
+                        color = when (game.status.lowercase()) {
+                            "completado" -> Color.Green.copy(alpha = 0.2f)
+                            "jugando" -> Color.Blue.copy(alpha = 0.2f)
+                            "por jugar" -> Color.Gray.copy(alpha = 0.2f)
+                            "abandonado" -> Color.Red.copy(alpha = 0.2f)
+                            else -> Color.Gray.copy(alpha = 0.2f)
+                        },
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Icon(
+                                when (game.status.lowercase()) {
+                                    "completado" -> Icons.Default.CheckCircle
+                                    "jugando" -> Icons.Default.PlayCircle
+                                    "por jugar" -> Icons.Default.Schedule
+                                    "abandonado" -> Icons.Default.Cancel
+                                    else -> Icons.Default.Help
+                                },
+                                contentDescription = "Estado",
+                                tint = when (game.status.lowercase()) {
+                                    "completado" -> Color.Green
+                                    "jugando" -> Color.Blue
+                                    "por jugar" -> Color.Gray
+                                    "abandonado" -> Color.Red
+                                    else -> Color.Gray
+                                },
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text(
+                                text = game.status,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = when (game.status.lowercase()) {
+                                    "completado" -> Color.Green
+                                    "jugando" -> Color.Blue
+                                    "por jugar" -> Color.Gray
+                                    "abandonado" -> Color.Red
+                                    else -> Color.Gray
+                                },
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Calificación
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -314,22 +471,144 @@ fun GameCardSimple(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "${game.rating}/10",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium
+                    )
+
+                    // Mostrar horas si están en las notas
+                    game.notes?.let { notas ->
+                        val horasRegex = """(\d+)\s*(horas?|h)""".toRegex(RegexOption.IGNORE_CASE)
+                        horasRegex.find(notas)?.let { match ->
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Timer,
+                                    contentDescription = "Horas jugadas",
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Text(
+                                    text = match.value,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Notas (si existen y no son solo horas)
+                game.notes?.takeIf { notas ->
+                    notas.isNotBlank() &&
+                            notas.length > 3 &&
+                            !"""^\d+\s*(horas?|h)$""".toRegex(RegexOption.IGNORE_CASE).matches(notas.trim())
+                }?.let { notas ->
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = notas,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
+        }
+    }
 
-            // Notas (si existen)
-            game.notes?.takeIf { it.isNotBlank() }?.let { notes ->
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = notes,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
+    // DIÁLOGO DE CONFIRMACIÓN PARA ELIMINAR
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Eliminar juego") },
+            text = { Text("¿Estás seguro de que quieres eliminar \"${game.title}\"? Esta acción no se puede deshacer.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        onDelete()
+                    }
+                ) {
+                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteDialog = false }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    // 🖼️ DIÁLOGO PARA VER IMAGEN EN PANTALLA COMPLETA
+    if (showImageFullscreen && game.imagenUrl != null) {
+        Dialog(
+            onDismissRequest = { showImageFullscreen = false }
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.8f),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) {
+                        Image(
+                            painter = rememberAsyncImagePainter(
+                                model = game.imagenUrl,
+                                error = painterResource(id = R.drawable.ic_empty_games)
+                            ),
+                            contentDescription = "Imagen completa de ${game.title}",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit
+                        )
+
+                        // Botón para cerrar
+                        IconButton(
+                            onClick = { showImageFullscreen = false },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Cerrar",
+                                tint = Color.White
+                            )
+                        }
+                    }
+
+                    // Pie de foto
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            Text(
+                                text = game.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "${game.platform} • ${game.status} • ${game.rating}/10",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
         }
     }

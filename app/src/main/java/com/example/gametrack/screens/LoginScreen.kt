@@ -129,6 +129,7 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // BOTÓN: LIMPIAR DATOS LOCALES (MANTENIDO)
             Button(
                 onClick = {
                     scope.launch {
@@ -156,6 +157,7 @@ fun LoginScreen(
                 Text("🧹 LIMPIAR DATOS LOCALES")
             }
 
+            // BOTÓN: TEST CONEXIÓN DIRECTA (MANTENIDO)
             Button(
                 onClick = {
                     scope.launch {
@@ -188,6 +190,7 @@ fun LoginScreen(
                 Text("🚨 TEST CONEXIÓN DIRECTA")
             }
 
+            // BOTÓN: TEST RETROFIT DIRECTO (MANTENIDO)
             Button(
                 onClick = {
                     scope.launch {
@@ -282,56 +285,7 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Button(
-            onClick = {
-                scope.launch {
-                    try {
-                        Log.d("LoginScreen", "🟢 [TEST-VIEWMODEL] Botón clickeado")
-                        isTestingConnection = true
-                        connectionStatus = "🔍 Probando con ViewModel..."
-
-                        Log.d("LoginScreen", "🟡 [TEST-VIEWMODEL] Llamando a viewModel.testBackendConnection()")
-                        val connected = viewModel.testBackendConnection()
-
-                        if (connected) {
-                            Log.d("LoginScreen", "✅ [TEST-VIEWMODEL] Conexión EXITOSA")
-                            connectionStatus = "✅ Backend conectado (ViewModel)"
-                            Toast.makeText(context, "✅ Backend conectado", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Log.d("LoginScreen", "❌ [TEST-VIEWMODEL] Conexión FALLÓ")
-                            connectionStatus = "❌ ViewModel no pudo conectar"
-                            Toast.makeText(context, "❌ ViewModel falló", Toast.LENGTH_SHORT).show()
-                        }
-                    } catch (e: Exception) {
-                        Log.e("LoginScreen", "💥 [TEST-VIEWMODEL] ERROR: ${e.message}")
-                        connectionStatus = "💥 Error ViewModel: ${e.message}"
-                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                    } finally {
-                        Log.d("LoginScreen", "🟢 [TEST-VIEWMODEL] Test completado")
-                        isTestingConnection = false
-                    }
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.secondary
-            ),
-            enabled = !isLoading && !isTestingConnection
-        ) {
-            if (isTestingConnection) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onSecondary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Probando...")
-            } else {
-                Icon(Icons.Default.NetworkCheck, contentDescription = "Probar conexión")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("🔌 PROBAR CON VIEWMODEL")
-            }
-        }
+        // 🚫 BOTÓN "PROBAR CON VIEWMODEL" - ELIMINADO (NO APARECE)
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -454,7 +408,7 @@ fun LoginScreen(
                     )
 
                     Text(
-                        "📡 URL Backend: http://10.244.53.176:8080",  // ← IP ACTUALIZADA
+                        "📡 URL Backend: http://10.116.67.176:8080",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.DarkGray
                     )
@@ -481,9 +435,8 @@ private suspend fun testDirectOkHttp(): String = withContext(Dispatchers.IO) {
             .readTimeout(10, TimeUnit.SECONDS)
             .build()
 
-        // ⬇️⬇️⬇️ IP ACTUALIZADA AQUÍ ⬇️⬇️⬇️
         val request = Request.Builder()
-            .url("http://10.116.67.176:8080/api/auth/test")  // ← NUEVA IP
+            .url("http://10.116.67.176:8080/api/auth/test")
             .build()
 
         Log.d("LoginScreen", "➡️ [OkHttp] Enviando a: http://10.116.67.176:8080/api/auth/test")
@@ -503,7 +456,6 @@ private suspend fun testDirectRetrofit(): String = withContext(Dispatchers.IO) {
     try {
         Log.d("LoginScreen", "🔧 [Retrofit-SIMPLE] Iniciando test...")
 
-        // Modelo LOCAL para la respuesta del test
         data class SimpleTestResponse(
             val status: String? = null,
             val message: String? = null,
@@ -515,9 +467,8 @@ private suspend fun testDirectRetrofit(): String = withContext(Dispatchers.IO) {
             .readTimeout(10, TimeUnit.SECONDS)
             .build()
 
-        // ⬇️⬇️⬇️ IP ACTUALIZADA AQUÍ TAMBIÉN ⬇️⬇️⬇️
         val request = Request.Builder()
-            .url("http://10.116.67.176:8080/api/auth/test")  // ← NUEVA IP
+            .url("http://10.116.67.176:8080/api/auth/test")
             .build()
 
         Log.d("LoginScreen", "➡️ [Retrofit-SIMPLE] Enviando request...")
@@ -532,7 +483,6 @@ private suspend fun testDirectRetrofit(): String = withContext(Dispatchers.IO) {
         }
 
         return@withContext try {
-            // Intentar parsear como JSON
             val gson = Gson()
             val testResponse = gson.fromJson(rawBody, SimpleTestResponse::class.java)
 
@@ -542,7 +492,6 @@ private suspend fun testDirectRetrofit(): String = withContext(Dispatchers.IO) {
                 "⚠️ Retrofit-SIMPLE: Respuesta JSON inesperada - '$rawBody'"
             }
         } catch (e: Exception) {
-            // Si no es JSON, mostrar texto plano
             "⚠️ Retrofit-SIMPLE: Texto plano - '$rawBody'"
         }
 

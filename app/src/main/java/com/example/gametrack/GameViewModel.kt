@@ -1,5 +1,6 @@
 package com.example.gametrack
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.gametrack.data.Game
@@ -15,6 +16,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.util.Log
 import kotlin.math.absoluteValue
+import java.util.UUID
 
 class GameViewModel(
     private val gameRepository: GameRepository,
@@ -38,6 +40,57 @@ class GameViewModel(
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
     val currentUser: StateFlow<UserState> = _currentUser.asStateFlow()
     val backendStatus: StateFlow<BackendStatus> = _backendStatus.asStateFlow()
+
+    // ========== SHARED PREFERENCES ==========
+    private lateinit var context: Context
+
+    // CLAVE: ID del usuario persistente
+    private val USER_ID_PREF_KEY = "user_id"
+    private val USERNAME_PREF_KEY = "username"
+    private val EMAIL_PREF_KEY = "email"
+
+    fun setContext(context: Context) {
+        this.context = context
+        loadUserIdFromPrefs()
+    }
+
+    private fun loadUserIdFromPrefs() {
+        if (!this::context.isInitialized) return
+
+        val prefs = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        _currentUserId = prefs.getInt(USER_ID_PREF_KEY, 0)
+        Log.d("GameViewModel", "📱 UserId cargado desde Prefs: $_currentUserId")
+    }
+
+    private fun saveUserToPrefs(userId: Int, username: String, email: String) {
+        if (!this::context.isInitialized) return
+
+        val prefs = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        prefs.edit().apply {
+            putInt(USER_ID_PREF_KEY, userId)
+            putString(USERNAME_PREF_KEY, username)
+            putString(EMAIL_PREF_KEY, email)
+            apply()
+        }
+        Log.d("GameViewModel", "💾 Guardado en Prefs: userId=$userId, username=$username, email=$email")
+    }
+
+    fun getUsernameFromPrefs(): String {
+        if (!this::context.isInitialized) return ""
+        val prefs = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        return prefs.getString(USERNAME_PREF_KEY, "") ?: ""
+    }
+
+    fun getEmailFromPrefs(): String {
+        if (!this::context.isInitialized) return ""
+        val prefs = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        return prefs.getString(EMAIL_PREF_KEY, "") ?: ""
+    }
+
+    private fun generateStableUserId(username: String): Int {
+        // Genera un ID estable basado en el username
+        return username.hashCode().absoluteValue % 1000000
+    }
 
     init {
         Log.d("GameViewModel", "✅ ViewModel inicializado")
@@ -113,7 +166,19 @@ class GameViewModel(
                                 )
                             }
 
-                            _currentUserId = username.hashCode().absoluteValue
+                            // GENERAR Y GUARDAR USER ID ESTABLE
+                            _currentUserId = generateStableUserId(username)
+                            val userEmail = if (userFromDb != null) {
+                                userFromDb.email
+                            } else {
+                                authResponse?.email ?: ""
+                            }
+
+                            // Guardar en SharedPreferences
+                            if (this@GameViewModel::context.isInitialized) {
+                                saveUserToPrefs(_currentUserId, username, userEmail)
+                            }
+
                             Log.d("GameViewModel", "🆔 [LOGIN] UserId asignado: $_currentUserId")
 
                             loadGamesForCurrentUser()
@@ -130,7 +195,14 @@ class GameViewModel(
                                 email = user.email
                             )
 
-                            _currentUserId = user.username.hashCode().absoluteValue
+                            // GENERAR Y GUARDAR USER ID ESTABLE
+                            _currentUserId = generateStableUserId(user.username)
+
+                            // Guardar en SharedPreferences
+                            if (this@GameViewModel::context.isInitialized) {
+                                saveUserToPrefs(_currentUserId, user.username, user.email)
+                            }
+
                             Log.d("GameViewModel", "🆔 [LOGIN] UserId (local): $_currentUserId")
 
                             loadGamesForCurrentUser()
@@ -182,7 +254,14 @@ class GameViewModel(
                                 UserState.LoggedInLocal(username = username, email = email)
                             }
 
-                            _currentUserId = username.hashCode()
+                            // GENERAR Y GUARDAR USER ID ESTABLE
+                            _currentUserId = generateStableUserId(username)
+
+                            // Guardar en SharedPreferences
+                            if (this@GameViewModel::context.isInitialized) {
+                                saveUserToPrefs(_currentUserId, username, email)
+                            }
+
                             loadGamesForCurrentUser()
                             _authState.value = AuthState.SuccessBackend(authResponse)
                             true
@@ -194,7 +273,15 @@ class GameViewModel(
                                 username = username,
                                 email = email
                             )
-                            _currentUserId = username.hashCode()
+
+                            // GENERAR Y GUARDAR USER ID ESTABLE
+                            _currentUserId = generateStableUserId(username)
+
+                            // Guardar en SharedPreferences
+                            if (this@GameViewModel::context.isInitialized) {
+                                saveUserToPrefs(_currentUserId, username, email)
+                            }
+
                             loadGamesForCurrentUser()
                             _authState.value = AuthState.SuccessLocal
                             true
@@ -221,7 +308,10 @@ class GameViewModel(
 
     // ========== JUEGOS ==========
     fun loadGamesForCurrentUser() {
+        Log.d("GameViewModel", "🔄 [loadGamesForCurrentUser] UserId actual: $_currentUserId")
+
         if (_currentUserId <= 0) {
+            Log.w("GameViewModel", "⚠️ UserId es 0, no se pueden cargar juegos")
             _games.value = emptyList()
             return
         }
@@ -229,10 +319,13 @@ class GameViewModel(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                Log.d("GameViewModel", "🔄 Cargando juegos para usuario: $_currentUserId")
+                Log.d("GameViewModel", "📡 Cargando juegos para usuario: $_currentUserId")
                 gameRepository.getGamesForUser(_currentUserId).collectLatest { gamesList ->
                     _games.value = gamesList
                     Log.d("GameViewModel", "📦 Juegos cargados: ${gamesList.size}")
+                    gamesList.forEach { game ->
+                        Log.d("GameViewModel", "   - ${game.title} (userId: ${game.userId})")
+                    }
                 }
                 _errorMessage.value = null
             } catch (e: Exception) {
@@ -250,12 +343,18 @@ class GameViewModel(
             _isLoading.value = true
             try {
                 val gameWithUser = game.copy(userId = _currentUserId)
-                Log.d("GameViewModel", "➕ Añadiendo juego: ${game.title}")
+                Log.d("GameViewModel", "➕ Añadiendo juego: ${game.title} con userId: $_currentUserId")
+
                 gameRepository.insertGame(gameWithUser)
+
+                // Recargar juegos después de añadir
+                loadGamesForCurrentUser()
+
                 _errorMessage.value = null
+                Log.d("GameViewModel", "✅ Juego añadido exitosamente")
             } catch (e: Exception) {
                 Log.e("GameViewModel", "❌ Error añadiendo juego: ${e.message}")
-                _errorMessage.value = "Error añadiendo juego"
+                _errorMessage.value = "Error añadiendo juego: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -268,7 +367,12 @@ class GameViewModel(
             try {
                 Log.d("GameViewModel", "🗑️ Eliminando juego: ${game.title}")
                 gameRepository.deleteGame(game)
+
+                // Recargar juegos después de eliminar
+                loadGamesForCurrentUser()
+
                 _errorMessage.value = null
+                Log.d("GameViewModel", "✅ Juego eliminado exitosamente")
             } catch (e: Exception) {
                 Log.e("GameViewModel", "❌ Error eliminando juego: ${e.message}")
                 _errorMessage.value = "Error eliminando juego"
@@ -285,6 +389,10 @@ class GameViewModel(
                 val gameWithUser = updatedGame.copy(userId = _currentUserId)
                 Log.d("GameViewModel", "✏️ Actualizando juego: ${updatedGame.title}")
                 gameRepository.updateGame(gameWithUser)
+
+                // Recargar juegos después de actualizar
+                loadGamesForCurrentUser()
+
                 _errorMessage.value = null
             } catch (e: Exception) {
                 Log.e("GameViewModel", "❌ Error actualizando juego: ${e.message}")
@@ -296,13 +404,38 @@ class GameViewModel(
     }
 
     // ========== UTILIDADES ==========
-    fun getCurrentUserId(): Int = _currentUserId
+    fun getCurrentUserId(): Int {
+        Log.d("GameViewModel", "📱 [getCurrentUserId] devolviendo: $_currentUserId")
+        return _currentUserId
+    }
 
     fun getCurrentUsername(): String {
         return when (val state = _currentUser.value) {
             is UserState.LoggedInBackend -> state.username
             is UserState.LoggedInLocal -> state.username
-            UserState.NotLoggedIn -> ""
+            UserState.NotLoggedIn -> {
+                // Intentar obtener de SharedPreferences
+                if (this::context.isInitialized) {
+                    getUsernameFromPrefs()
+                } else {
+                    ""
+                }
+            }
+        }
+    }
+
+    fun getCurrentEmail(): String {
+        return when (val state = _currentUser.value) {
+            is UserState.LoggedInBackend -> state.email
+            is UserState.LoggedInLocal -> state.email
+            UserState.NotLoggedIn -> {
+                // Intentar obtener de SharedPreferences
+                if (this::context.isInitialized) {
+                    getEmailFromPrefs()
+                } else {
+                    ""
+                }
+            }
         }
     }
 
@@ -312,6 +445,13 @@ class GameViewModel(
         _currentUser.value = UserState.NotLoggedIn
         _currentUserId = 0
         _games.value = emptyList()
+
+        // LIMPIAR SHAREDPREFERENCES
+        if (this::context.isInitialized) {
+            val prefs = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+            prefs.edit().clear().apply()
+            Log.d("GameViewModel", "🧹 SharedPreferences limpiados")
+        }
     }
 
     fun clearAuthState() {
@@ -320,6 +460,16 @@ class GameViewModel(
 
     fun clearErrorMessage() {
         _errorMessage.value = null
+    }
+
+    // ========== DEBUG ==========
+    fun debugInfo(): String {
+        return """
+            UserId: $_currentUserId
+            Username: ${getCurrentUsername()}
+            Games loaded: ${_games.value.size}
+            AuthState: ${_authState.value::class.simpleName}
+        """.trimIndent()
     }
 
     // ========== CLASES SELLADAS ==========
