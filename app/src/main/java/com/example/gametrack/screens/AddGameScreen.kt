@@ -21,14 +21,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
-import com.example.gametrack.BuildConfig
 import com.example.gametrack.GameViewModel
 import com.example.gametrack.data.Game
 import com.example.gametrack.ui.theme.NeonGreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.RoundedCornerShape
-
 
 
 @OptIn(ExperimentalMaterial3Api::class)

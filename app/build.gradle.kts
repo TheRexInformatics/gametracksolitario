@@ -9,6 +9,15 @@ android {
     namespace = "com.example.gametrack"
     compileSdk = 34
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("../keystore/gametrack.jks")  // ✅ CORRECTO  // ← ruta a tu .jks
+            storePassword = "GameTrack2025"        // ← contraseña del keystore
+            keyAlias = "gametrack"                     // ← alias que usaste
+            keyPassword = "GameTrack2025"            // ← contraseña de la clave
+        }
+    }
+
     defaultConfig {
         applicationId = "com.example.gametrack"
         minSdk = 24
@@ -21,6 +30,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
