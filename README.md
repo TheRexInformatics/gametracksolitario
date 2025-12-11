@@ -96,10 +96,15 @@ URL Base: http://10.116.67.176:8080/api/
 
 Método	Endpoint	Descripción
 POST	/auth/register	Registro de nuevo usuario
+
 POST	/auth/login	Inicio de sesión
+
 POST	/auth/forgot-password	Solicitar recuperación de contraseña
+
 POST	/auth/reset-password	Restablecer contraseña con token
+
 GET	/auth/check-username/{username}	Verificar disponibilidad de username
+
 GET	/auth/test	Prueba de conexión al servicio
 
 API Externa Consumida
@@ -351,4 +356,5 @@ Formulario individual completado en AVA
 
 ⭐ Si este proyecto te gustó, ¡no olvides darle una estrella en GitHub!
 Recursos nativos del dispositivo
+
 
