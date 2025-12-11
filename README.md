@@ -8,6 +8,7 @@ GameTrack es una aplicación móvil completa desarrollada en Kotlin con Jetpack 
 [Martín Villarroel]
 
 🎯 Funcionalidades Principales
+
 🔐 Autenticación y Usuarios
 Registro de usuarios (username, email, password)
 
@@ -356,5 +357,6 @@ Formulario individual completado en AVA
 
 ⭐ Si este proyecto te gustó, ¡no olvides darle una estrella en GitHub!
 Recursos nativos del dispositivo
+
 
 
