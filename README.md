@@ -1,14 +1,14 @@
 # GameTrack Solitario
 
-# 📱 GameTrack - Gestor de Colección de Videojuegos
+# GameTrack - Gestor de Colección de Videojuegos
 GameTrack es una aplicación móvil completa desarrollada en Kotlin con Jetpack Compose que permite a los usuarios gestionar su colección personal de videojuegos. La aplicación se conecta a un backend propio desarrollado con Spring Boot y MySQL, e integra una API externa para obtener automáticamente imágenes de juegos.
 
-# 👥 Integrantes del Equipo
+# Integrantes del Equipo
 [Martín Villarroel]
 
-# 🎯 Funcionalidades Implementadas
+# Funcionalidades Implementadas
 
-# 🔐 Autenticación y Usuarios
+# Autenticación y Usuarios
 
 1.-Registro de usuarios (username, email, password) con validaciones
 2.-Inicio de sesión con sistema híbrido (local y remoto)
@@ -17,7 +17,7 @@ GameTrack es una aplicación móvil completa desarrollada en Kotlin con Jetpack 
 5.-Perfil de usuario con foto personalizable (cámara y galería)
 6.-Cierre de sesión
 
-# 🎮 Gestión de Colección de Juegos
+# Gestión de Colección de Juegos
 
 1.-Añadir juegos con campos: título, plataforma, estado, calificación, notas, horas jugadas
 2.-Búsqueda automática de imágenes mediante API de IGDB
@@ -26,7 +26,7 @@ GameTrack es una aplicación móvil completa desarrollada en Kotlin con Jetpack 
 5.-Visualización de imágenes en pantalla completa
 6.-Estadísticas básicas en perfil
 
-# 📊 Características Técnicas
+# Características Técnicas
 
 1.-Persistencia local con Room Database
 2.-Conexión a backend propio con Spring Boot
@@ -35,7 +35,7 @@ GameTrack es una aplicación móvil completa desarrollada en Kotlin con Jetpack 
 5.-Validaciones de formularios en tiempo real
 6.-Navegación fluida entre 7 pantallas
 
-# 🛠️ Tecnologías Utilizadas
+# Tecnologías Utilizadas
 
 # Frontend (Android App)
 Lenguaje: Kotlin
@@ -61,18 +61,18 @@ IDE: Android Studio
 Base de datos: MySQL (Laragon)
 Testing: Pruebas manuales
 
-# 🔗 Endpoints Utilizados
+# Endpoints Utilizados
 
 # Backend Propio (Spring Boot)
 URL Base: http://10.116.67.176:8080/api/auth/
 
 Método	Endpoint	Descripción	Implementado
-POST	/register	Registro de usuario	✅
-POST	/login	Inicio de sesión	✅
-POST	/forgot-password	Solicitar token	✅
-POST	/reset-password	Restablecer contraseña	✅
-GET	  /check-username/{username}	Verificar username	✅
-GET	  /test	Prueba de conexión	✅
+POST	/register	Registro de usuario	
+POST	/login	Inicio de sesión	
+POST	/forgot-password	Solicitar token	
+POST	/reset-password	Restablecer contraseña	
+GET	  /check-username/{username}	Verificar username	
+GET	  /test	Prueba de conexión	
 
 # API Externa Consumida
 IGDB (Internet Game Database)
@@ -81,35 +81,35 @@ Propósito: Obtener imágenes de carátulas de juegos
 Método: POST con autenticación Bearer token
 Integración: En AddGameScreen.kt y ApiGame.kt
 
-# 📱 Recursos Nativos Implementados
+#  Recursos Nativos Implementados
 
 # 1. Cámara
 Archivo: ProfileScreen.kt
 Uso: Tomar foto para perfil de usuario
 Permiso: Manifest.permission.CAMERA
 Código clave: createImageFileUri(), cameraLauncher
-Estado: ✅ Completamente funcional
+Estado:  Completamente funcional
 
 # 2. Galería de Fotos
 Archivo: ProfileScreen.kt
 Uso: Seleccionar imagen desde galería
 Implementación: ActivityResultContracts.GetContent()
 Código clave: galleryLauncher
-Estado: ✅ Completamente funcional
+Estado:  Completamente funcional
 
 # 3. Almacenamiento Local
 Tecnología: Room Database
 Entidades: User, Game
 Archivos: GameDatabase.kt, UserDao.kt, GameDao.kt
-Estado: ✅ Persistencia completa
+Estado:  Persistencia completa
 
 # 4. Vibrador
 Archivo: LoginScreen.kt
 Uso: Retroalimentación háptica en errores
 Código: vibrateError() función
-Estado: ✅ Implementado
+Estado:  Implementado
 
-# 🏗️ Estructura del Proyecto
+#  Estructura del Proyecto
 
 Frontend Android - Carpetas Principales
 app/src/main/java/com/example/gametrack/
@@ -162,7 +162,7 @@ src/main/java/com/gametrack/auth/
 
 
 
-# 🚀 Instrucciones para Ejecutar el Proyecto
+# Instrucciones para Ejecutar el Proyecto
 Prerrequisitos
 
 Android Studio (versión reciente)
@@ -192,7 +192,7 @@ Verificar en: http://localhost:8080/api/auth/test
 2.-Cambiar la IP en ApiClient.kt: private const val BASE_URL = "http://TU_IP_LOCAL:8080/api/"
 Reemplazar TU_IP_LOCAL con tu IP (ej: 10.116.67.176)
 3.-Sincronizar proyecto: File → Sync Project with Gradle Files
-4.-Ejecutar la app: Click en ▶️ Run button
+4.-Ejecutar la app: Click en Run button
 Seleccionar dispositivo físico o emulador
 
 # Paso 3: Probar la Aplicación
@@ -204,7 +204,7 @@ Seleccionar dispositivo físico o emulador
 5.-Probar recuperación de contraseña
 6.-Cambiar foto de perfil (cámara/galería)
 
-# 📦 Archivos de Distribución
+# Archivos de Distribución
 # APK Firmado
 Ubicación en repositorio: /app/release/app-release.apk
 Versión: 1.0
@@ -223,7 +223,7 @@ signingConfigs {
     }
 }
 
-# ✅ Validaciones de Formularios Implementadas
+# Validaciones de Formularios Implementadas
 
 # Login Screen
 Username no vacío
@@ -250,7 +250,7 @@ Token de 6 dígitos
 Nueva password mínimo 6 caracteres
 Confirmación de password coincidente
 
-# 👤 Sistema de Usuarios
+# Sistema de Usuarios
 
 # Rol Implementado: Usuario Registrado
 Permisos: Gestión completa de su propia colección
@@ -263,7 +263,7 @@ Si falla, intenta con backend (Spring Boot)
 Migración automática de SHA-256 a BCrypt
 Persistencia de sesión con SharedPreferences
 
-# 🔒 Medidas de Seguridad
+# Medidas de Seguridad
 
 # Frontend
 Passwords hasheados con BCrypt antes de enviar
@@ -282,7 +282,7 @@ Headers HTTP estándar (Content-Type: application/json)
 Timeouts configurados (30 segundos)
 Interceptores para logging en desarrollo
 
-# 🎨 Diseño de Interfaz
+# Diseño de Interfaz
 # Tema Visual
 Paleta principal: Verde neón (#39FF14) sobre fondo oscuro
 Tipografía: Material Design 3
@@ -301,7 +301,7 @@ Indicadores de carga circulares
 Animación en búsqueda de imágenes
 Efectos de hover en tarjetas
 
-# ⚠️ Solución de Problemas Comunes
+# Solución de Problemas Comunes
 # Error: "No hay conexión al servidor"
 1.-Verificar que Spring Boot esté ejecutándose (http://localhost:8080/api/auth/test)
 2.-Confirmar IP en ApiClient.kt línea 14
@@ -328,20 +328,24 @@ Efectos de hover en tarjetas
 3.-Comprobar compatibilidad de Android version (minSdk 24)
 
 
-# 📄 Licencia y Uso
+# Licencia y Uso
 Este proyecto fue desarrollado con fines educativos para la asignatura DSY1105 - Desarrollo de Aplicaciones Móviles en DUOC UC.
 El código se proporciona como referencia educativa. Para uso comercial o redistribución, contactar a los autores.
 
 
-# 📞 Información de Contacto
+# Información de Contacto
 Repositorio GitHub: [https://github.com/TheRexInformatics/gametracksolitario.git]
+
 Correo del equipo: [ma.villarroelt@duocuc.cl]
+
 Asignatura: DSY1105 - Desarrollo de Aplicaciones Móviles
+
 Profesor: [MARCELO EDUARDO CRISOSTOMO CARRASCO]
+
 Fecha de entrega: Diciembre 2025
 
 
-# 🔍 Notas para el Evaluador
+# Notas para el Evaluador
 Backend: Ejecutar en puerto 8080, verificar IP en ApiClient.kt
 Demo login: Usar cualquier usuario/password (sistema híbrido funciona)
 Reset password: Usar cualquier token de 6 dígitos para demo
@@ -349,4 +353,5 @@ Imágenes automáticas: Escribir nombres de juegos conocidos (Minecraft, Zelda, 
 Persistencia: Los datos se guardan localmente incluso sin backend
 
 
-# ⭐ Si este proyecto te gustó, ¡no olvides darle una estrella en GitHub! #
+# Si este proyecto te gustó, ¡no olvides darle una estrella en GitHub! #
+
